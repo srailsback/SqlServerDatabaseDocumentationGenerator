@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -66,7 +66,11 @@ THE SOFTWARE.");
 
 					hw.RenderBeginTag(HtmlTextWriterTag.Body);
 
-					hw.RenderBeginTag(HtmlTextWriterTag.H1);
+                    hw.AddAttribute(HtmlTextWriterAttribute.Class, "container-fluid");
+                    hw.RenderBeginTag("div");
+
+                    hw.AddAttribute(HtmlTextWriterAttribute.Id, string.Format("db{0}", db.ObjectId));
+                    hw.RenderBeginTag(HtmlTextWriterTag.H1);
 
 					hw.WriteEncodedText(String.Format("{0} Database", db.DatabaseName));
 
@@ -78,6 +82,12 @@ THE SOFTWARE.");
                         hw.WriteEncodedText(db.Description);
                         hw.RenderEndTag(); //p
                     }
+
+
+                    // WRITE TABLE OF CONTENTS
+                    WriteTableOfContents(db.Schemas, hw);
+
+
 
 					if (db.Schemas != null && db.Schemas.Count > 0)
 					{
@@ -93,8 +103,10 @@ THE SOFTWARE.");
                                 hw.RenderEndTag(); //hr
                             }
 
+                            hw.AddAttribute(HtmlTextWriterAttribute.Id, string.Format("schema{0}", schema.SchemaId));
 							hw.RenderBeginTag(HtmlTextWriterTag.H2);
 							hw.WriteEncodedText(String.Format("{0} (schema)", schema.SchemaName));
+                            WriteAchors(db.Schemas, hw);
 							hw.RenderEndTag(); //h2
 
 							if (!String.IsNullOrWhiteSpace(schema.Description))
@@ -261,11 +273,11 @@ THE SOFTWARE.");
 
 									bool hasIndexes = (table.Indexes != null && table.Indexes.Count > 0);
 
+                                    hw.AddAttribute(HtmlTextWriterAttribute.Id, string.Format("table{0}", table.TableId));
 									hw.RenderBeginTag(HtmlTextWriterTag.H3);
 									hw.WriteEncodedText(String.Format("{0}.{1} (table)", schema.SchemaName, table.TableName));
-									hw.RenderEndTag(); //h3
-
-
+                                    WriteAchors(db.Schemas, hw);
+                                    hw.RenderEndTag(); //h3
 
                                     hw.AddAttribute(HtmlTextWriterAttribute.Class, "table table-bordered table-striped table-condensed");
 									hw.RenderBeginTag(HtmlTextWriterTag.Table);
@@ -563,10 +575,11 @@ THE SOFTWARE.");
                                 {
                                     var view = schema.Views[v];
 
-                                   
 
+                                    hw.AddAttribute(HtmlTextWriterAttribute.Id, string.Format("view{0}", view.ViewId));
                                     hw.RenderBeginTag(HtmlTextWriterTag.H3);
                                     hw.WriteEncodedText(String.Format("{0}.{1} (view)", schema.SchemaName, view.ViewName));
+                                    WriteAchors(db.Schemas, hw);
                                     hw.RenderEndTag(); //h3
 
                                     //TODO: add columns and indexes for view, use view.Description as table caption
@@ -785,9 +798,10 @@ THE SOFTWARE.");
                                 for (int r = 0; r < schema.StoredProcedures.Count; r++)
                                 {
                                     var sproc = schema.StoredProcedures[r];
-
+                                    hw.AddAttribute(HtmlTextWriterAttribute.Id, string.Format("sproc{0}", sproc.ProcedureId));
                                     hw.RenderBeginTag(HtmlTextWriterTag.H3);
                                     hw.WriteEncodedText(String.Format("{0}.{1} (stored procedure)", schema.SchemaName,sproc.ProcedureName) );
+                                    WriteAchors(db.Schemas, hw);
                                     hw.RenderEndTag(); //h3
 
                                     if (!String.IsNullOrWhiteSpace(sproc.Description))
@@ -912,9 +926,10 @@ THE SOFTWARE.");
                                 for (int f = 0; f < schema.ScalarFunctions.Count; f++)
                                 {
                                     var func = schema.ScalarFunctions[f];
-
+                                    hw.AddAttribute(HtmlTextWriterAttribute.Id, string.Format("sfunc{0}", func.FunctionId));
                                     hw.RenderBeginTag(HtmlTextWriterTag.H3);
                                     hw.WriteEncodedText(String.Format("{0}.{1} (scalar function)", schema.SchemaName, func.FunctionName));
+                                    WriteAchors(db.Schemas, hw);
                                     hw.RenderEndTag(); //h3
 
                                     if (!String.IsNullOrWhiteSpace(func.Description))
@@ -1040,9 +1055,10 @@ THE SOFTWARE.");
                                 for (int t = 0; t < schema.TableFunctions.Count; t++)
                                 {
                                     var tFunc = schema.TableFunctions[t];
-
+                                    hw.AddAttribute(HtmlTextWriterAttribute.Id, string.Format("tfunc{0}", tFunc.FunctionId));
                                     hw.RenderBeginTag(HtmlTextWriterTag.H3);
                                     hw.WriteEncodedText(String.Format("{0}.{1} (table function)", schema.SchemaName, tFunc.FunctionName));
+                                    WriteAchors(db.Schemas, hw);
                                     hw.RenderEndTag(); //h3
 
                                     if (!String.IsNullOrWhiteSpace(tFunc.Description))
@@ -1228,6 +1244,7 @@ THE SOFTWARE.");
 
                     hw.RenderEndTag(); //p
 
+                    hw.RenderEndTag(); // div.container
 
 
 					hw.RenderEndTag(); //body
@@ -1238,6 +1255,137 @@ THE SOFTWARE.");
 				return textWriter.ToString();
 			}
 
+            private void WriteAchors(IList<Schema> schemas, HtmlTextWriter hw)
+            {
+                hw.RenderBeginTag("span");
+                WriteDbLink(schemas, hw);
+                WriteContentsLink(hw);
+                hw.RenderEndTag();
+            }
+
+            private void WriteTableOfContents(IList<Schema> schemas, HtmlTextWriter hw)
+            {
+                hw.AddAttribute(HtmlTextWriterAttribute.Id, "contents");
+                hw.RenderBeginTag("h2");
+                hw.WriteEncodedText("Contents");
+                hw.RenderBeginTag("span");
+                WriteDbLink(schemas, hw);
+                hw.RenderEndTag(); // span
+                hw.RenderEndTag(); // h2
+
+                hw.AddAttribute(HtmlTextWriterAttribute.Class, "row");
+                hw.RenderBeginTag("div");
+                if (schemas != null && schemas.Count > 0)
+                {
+                    hw.RenderBeginTag("ul");
+                    foreach (var s in schemas)
+                    {
+                        hw.RenderBeginTag("li");
+                        hw.AddAttribute(HtmlTextWriterAttribute.Href, string.Format("#schema{0}", s.SchemaId));
+                        hw.RenderBeginTag("a");
+                        hw.WriteEncodedText(string.Format("{0} (schema)", s.SchemaName));
+                        hw.RenderEndTag(); // a
+
+                        // get tables
+                        if (s.Tables.Count > 0)
+                        {
+                            hw.RenderBeginTag("ul");
+                            foreach (var t in s.Tables)
+                            {
+                                hw.RenderBeginTag("li");
+                                hw.AddAttribute(HtmlTextWriterAttribute.Href, string.Format("#table{0}", t.TableId));
+                                hw.RenderBeginTag("a");
+                                hw.WriteEncodedText(string.Format("{0} (table)", t.TableName));
+                                hw.RenderEndTag(); // a
+                                hw.RenderEndTag(); // li
+                            }
+                            hw.RenderEndTag(); // ul tables
+                        }
+
+                        if (s.Views.Count > 0)
+                        {
+                            hw.RenderBeginTag("ul");
+                            foreach (var v in s.Views)
+                            {
+                                hw.RenderBeginTag("li");
+                                hw.AddAttribute(HtmlTextWriterAttribute.Href, string.Format("#view{0}", v.ViewId ));
+                                hw.RenderBeginTag("a");
+                                hw.WriteEncodedText(string.Format("{0} (view)", v.ViewId));
+                                hw.RenderEndTag(); // a
+                                hw.RenderEndTag(); // li
+                            }
+                            hw.RenderEndTag(); // ul views
+                        }
+
+                        if (s.StoredProcedures.Count > 0)
+                        {
+                            hw.RenderBeginTag("ul");
+                            foreach (var sp in s.StoredProcedures)
+                            {
+                                hw.RenderBeginTag("li");
+                                hw.AddAttribute(HtmlTextWriterAttribute.Href, string.Format("#sproc{0}", sp.ProcedureId));
+                                hw.RenderBeginTag("a");
+                                hw.WriteEncodedText(string.Format("{0} (stored procedure)", sp.ProcedureName));
+                                hw.RenderEndTag(); // a
+                                hw.RenderEndTag(); // li
+                            }
+                            hw.RenderEndTag(); // ul store procedures
+                        }
+
+                        if (s.ScalarFunctions.Count > 0)
+                        {
+                            hw.RenderBeginTag("ul");
+                            foreach (var f in s.ScalarFunctions)
+                            {
+                                hw.RenderBeginTag("li");
+                                hw.AddAttribute(HtmlTextWriterAttribute.Href, string.Format("#sfunc{0}", f.FunctionId));
+                                hw.RenderBeginTag("a");
+                                hw.WriteEncodedText(string.Format("{0} (scalar function)", f.FunctionName));
+                                hw.RenderEndTag(); // a
+                                hw.RenderEndTag(); // li
+                            }
+                            hw.RenderEndTag(); // ul scalar functions
+                        }
+
+                        if (s.ScalarFunctions.Count > 0)
+                        {
+                            hw.RenderBeginTag("ul");
+                            foreach (var t in s.TableFunctions)
+                            {
+                                hw.RenderBeginTag("li");
+                                hw.AddAttribute(HtmlTextWriterAttribute.Href, string.Format("#tfunc{0}", t.FunctionId));
+                                hw.RenderBeginTag("a");
+                                hw.WriteEncodedText(string.Format("{0} (table function)", t.FunctionName));
+                                hw.RenderEndTag(); // a
+                                hw.RenderEndTag(); // li
+                            }
+                            hw.RenderEndTag(); // ul table functions
+                        }
+
+                        hw.RenderEndTag(); // li
+                    }
+                    hw.RenderEndTag(); // ul schemas
+                }
+                hw.RenderEndTag(); // div
+            }
+
+            private void WriteDbLink(IList<Schema> schemas,HtmlTextWriter hw, bool useDbName = false)
+            {
+                hw.Write(" ");
+                hw.AddAttribute(HtmlTextWriterAttribute.Href, string.Format("#db{0}", schemas.First().Parent.ObjectId.ToString()));
+                hw.RenderBeginTag("a");
+                hw.WriteEncodedText(useDbName ? schemas.First().Parent.ObjectName : "top");
+                hw.RenderEndTag(); // a
+            }
+
+            private void WriteContentsLink(HtmlTextWriter hw)
+            {
+                hw.Write(" ");
+                hw.AddAttribute(HtmlTextWriterAttribute.Href, "#contents");
+                hw.RenderBeginTag("a");
+                hw.WriteEncodedText("contents");
+                hw.RenderEndTag(); // a
+            }
 
 			//bootstrip + custom css
 			private readonly string baseCss = @"
@@ -1250,6 +1398,8 @@ THE SOFTWARE.");
                 .schema-objects-list-container { width: 40%; min-width: 200px }
                 th { background-color: #B0C4DE; }
                 body {margin-left: .5em;}
+                h2 span { font-size: 12px; }
+                h3 span { font-size: 12px; }
 				";
             
 
